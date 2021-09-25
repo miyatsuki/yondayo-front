@@ -1,6 +1,5 @@
 <script context="module">
 	export async function load({ page, fetch }) {
-		console.log(page);
 		const { userName, title } = page.params;
 
 		return {
