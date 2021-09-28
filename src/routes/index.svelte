@@ -47,10 +47,46 @@
 				user_name: userName,
 				title: title,
 				image_url: books.map((book) => {
-					return book.imageURL;
+					return book.bookImageURL;
 				})
 			})
 		});
+
+		const graphQLClient = new GraphQLClient(HASURA_URL);
+		const query = gql`
+			mutation MyMutation(
+				$userName: String
+				$pageTitle: String
+				$description: String
+				$books: [book_insert_input]!
+			) {
+				insert_page(
+					objects: { userName: $userName, title: $pageTitle, description: $description }
+				) {
+					returning {
+						id
+					}
+				}
+				insert_book(objects: $books) {
+					returning {
+						id
+					}
+				}
+			}
+		`;
+		const variables = {
+			userName: userName,
+			pageTitle: title,
+			books: books.map((bookFragment, index) => {
+				let book = { ...bookFragment };
+				delete book.id;
+				book['order'] = index;
+				book['pageTitle'] = title;
+				book['userName'] = userName;
+				return book;
+			})
+		};
+		graphQLClient.request(query, variables);
 	}
 
 	function handleEditButtonClick(book) {
@@ -60,9 +96,9 @@
 	function hancleAddButtonClick() {
 		newBook = {
 			id: id,
-			title: '',
-			URL: '',
-			imageURL: '',
+			bookTitle: '',
+			bookURL: '',
+			bookImageURL: '',
 			description: ''
 		};
 	}
@@ -91,18 +127,18 @@
 			{#if !editingBook || book.id !== editingBook.id}
 				<div>
 					<span>#{id}</span>
-					<span>{book.title}</span>
+					<span>{book.bookTitle}</span>
 					<span>{book.URL}</span>
-					<span>{book.imageURL}</span>
+					<span>{book.bookImageURL}</span>
 					<span>{book.description}</span>
 					<button on:click={() => handleEditButtonClick(book)}>編集</button>
 					<button on:click={() => handleDeleteButtonClick(book)}>削除</button>
 				</div>
 			{:else}
 				<div>
-					<input bind:value={editingBook.title} placeholder="タイトル" />
-					<input bind:value={editingBook.URL} placeholder="URL" />
-					<input bind:value={editingBook.imageURL} placeholder="画像URL" />
+					<input bind:value={editingBook.bookTitle} placeholder="タイトル" />
+					<input bind:value={editingBook.bookURL} placeholder="URL" />
+					<input bind:value={editingBook.bookImageURL} placeholder="画像URL" />
 					<input bind:value={editingBook.description} placeholder="紹介文" />
 					<button on:click={() => handleEditConfirmButton(book)}>更新</button>
 					<button on:click={handleCancelButton}>キャンセル</button>
@@ -112,9 +148,9 @@
 	{/if}
 	{#if newBook}
 		<div>
-			<input bind:value={newBook.title} placeholder="タイトル" />
-			<input bind:value={newBook.URL} placeholder="URL" />
-			<input bind:value={newBook.imageURL} placeholder="画像URL" />
+			<input bind:value={newBook.bookTitle} placeholder="タイトル" />
+			<input bind:value={newBook.bookURL} placeholder="URL" />
+			<input bind:value={newBook.bookImageURL} placeholder="画像URL" />
 			<input bind:value={newBook.description} placeholder="紹介文" />
 			<button on:click={handleAddConfirmButton}>確定</button>
 			<button on:click={handleCancelButton}>キャンセル</button>
