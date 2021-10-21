@@ -1,27 +1,75 @@
 <script>
-	import { GraphQLClient, gql } from 'graphql-request';
-	import { HASURA_URL } from '$lib/env.js';
+	import { createClient } from '@supabase/supabase-js';
+
+	const supabase = createClient(
+		import.meta.env.VITE_SUPABASE_URL,
+		import.meta.env.VITE_SUPABASE_KEY
+	);
 
 	var books = [];
+	var userName;
+	var userId;
+	var id = 0;
+
+	async function initialize() {
+		const user = supabase.auth.user();
+		if (user) {
+			userId = user.id;
+			userName = user.user_metadata.user_name;
+			const { data, error } = await supabase
+				.from('users')
+				.upsert({ user_id: user.id, user_name: user.user_metadata.user_name });
+			console.log(data);
+			console.log(error);
+
+			let { data: proceeds, error_select } = await supabase
+				.from('proceed')
+				.select('*')
+				.eq('user_id', userId);
+			console.log(proceeds);
+
+			const initialBooks = [];
+			for (var d of proceeds) {
+				console.log(d);
+				initialBooks.push({
+					id: d.book_id,
+					bookTitle: d.title,
+					bookURL: d.url,
+					bookImageURL: d.image_url,
+					proceed: d.proceed,
+					total: d.total
+				});
+
+				if (id < d.book_id) {
+					id = d.book_id;
+				}
+				id += 1;
+			}
+
+			books = initialBooks.filter((book) => book.proceed < book.total);
+			console.log(books);
+		}
+	}
+
+	initialize();
+
 	var newBook;
 	var editingBook;
-	var id = 1;
-
-	var userName = '';
-	var title = '';
-	var description = '';
 
 	function handleEditConfirmButton() {
 		const newBooks = [];
+		var before_proceed = 0;
 		for (var book of books) {
 			if (editingBook.id !== book.id) {
 				newBooks.push(book);
 			} else {
 				newBooks.push(editingBook);
+				before_proceed = book.proceed;
 			}
 		}
 
 		books = [...newBooks];
+		updateProceed(before_proceed, editingBook);
 		editingBook = null;
 	}
 
@@ -37,58 +85,6 @@
 		editingBook = null;
 	}
 
-	async function handlePublicButtonClick() {
-		const response = await fetch('https://za4d2r8b95.execute-api.ap-northeast-1.amazonaws.com', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({
-				user_name: userName,
-				title: title,
-				image_url: books.map((book) => {
-					return book.bookImageURL;
-				})
-			})
-		});
-
-		const graphQLClient = new GraphQLClient(HASURA_URL);
-		const query = gql`
-			mutation MyMutation(
-				$userName: String
-				$pageTitle: String
-				$description: String
-				$books: [book_insert_input]!
-			) {
-				insert_page(
-					objects: { userName: $userName, title: $pageTitle, description: $description }
-				) {
-					returning {
-						id
-					}
-				}
-				insert_book(objects: $books) {
-					returning {
-						id
-					}
-				}
-			}
-		`;
-		const variables = {
-			userName: userName,
-			pageTitle: title,
-			books: books.map((bookFragment, index) => {
-				let book = { ...bookFragment };
-				delete book.id;
-				book['order'] = index;
-				book['pageTitle'] = title;
-				book['userName'] = userName;
-				return book;
-			})
-		};
-		graphQLClient.request(query, variables);
-	}
-
 	function handleEditButtonClick(book) {
 		editingBook = { ...book };
 	}
@@ -99,13 +95,105 @@
 			bookTitle: '',
 			bookURL: '',
 			bookImageURL: '',
-			description: ''
+			proceed: 0,
+			total: 0
 		};
+	}
+
+	async function handleInputURL() {
+		if (editingBook) {
+			try {
+				const r = await fetch(LAMBDA_URL, {
+					method: 'POST',
+					headers: { 'Content-type': 'application/json' },
+					body: JSON.stringify({ url: editingBook.bookURL })
+				});
+				const data = await r.json();
+
+				if ('url' in data) {
+					editingBook.bookURL = data['url'];
+				}
+
+				if ('title' in data) {
+					editingBook.bookTitle = data['title'];
+				}
+
+				if ('imageURL' in data) {
+					editingBook.bookImageURL = data['imageURL'];
+				}
+
+				if ('total' in data) {
+					editingBook.total = data['total'];
+				}
+			} catch (e) {
+				console.log(e);
+			}
+		}
+
+		if (newBook) {
+			try {
+				const r = await fetch(LAMBDA_URL, {
+					method: 'POST',
+					headers: { 'Content-type': 'application/json' },
+					body: JSON.stringify({ url: newBook.bookURL })
+				});
+				const data = await r.json();
+
+				if ('url' in data) {
+					newBook.bookURL = data['url'];
+				}
+
+				if ('title' in data) {
+					newBook.bookTitle = data['title'];
+				}
+
+				if ('imageURL' in data) {
+					newBook.bookImageURL = data['imageURL'];
+				}
+
+				if ('total' in data) {
+					newBook.total = data['total'];
+				}
+			} catch (e) {
+				console.log(e);
+			}
+		}
+	}
+
+	async function updateProceed(before_proceed, book) {
+		var { data, error } = await supabase.from('proceed_log').insert([
+			{
+				user_id: userId,
+				book_id: book.id,
+				title: book.bookTitle,
+				url: book.bookURL,
+				image_url: book.bookImageURL,
+				before_proceed: before_proceed,
+				after_proceed: book.proceed,
+				total: book.total
+			}
+		]);
+		console.log(data);
+		console.log(error);
+
+		var { data, error } = await supabase.from('proceed').upsert({
+			user_id: userId,
+			book_id: book.id,
+			title: book.bookTitle,
+			url: book.bookURL,
+			image_url: book.bookImageURL,
+			proceed: book.proceed,
+			total: book.total,
+			updated_at: 'now()'
+		});
+		console.log(data);
+		console.log(error);
 	}
 
 	function handleAddConfirmButton() {
 		books = [...books, newBook];
 		id += 1;
+		updateProceed(0, newBook);
 		newBook = null;
 	}
 
@@ -113,33 +201,40 @@
 		editingBook = null;
 		newBook = null;
 	}
+
+	async function handleLoginButton() {
+		const { user, session, error } = await supabase.auth.signIn({
+			provider: 'twitter'
+		});
+	}
 </script>
 
-<div>紹介したいものを記入してください</div>
-<div>
-	<input bind:value={userName} placeholder="ユーザ名" /><br />
-	<input bind:value={title} placeholder="タイトル" /><br />
-	<textarea bind:value={description} placeholder="説明文" />
-</div>
+{#if !userId}
+	<button on:click={handleLoginButton}>Login</button>
+{:else}
+	<div>{userName}</div>
+{/if}
 <div>
 	{#if books}
 		{#each books as book, id (book.id)}
 			{#if !editingBook || book.id !== editingBook.id}
 				<div>
-					<span>#{id}</span>
+					<span>#{book.id}</span>
 					<span>{book.bookTitle}</span>
-					<span>{book.URL}</span>
+					<span>{book.bookURL}</span>
 					<span>{book.bookImageURL}</span>
-					<span>{book.description}</span>
+					<span>{book.proceed}/{book.total}</span>
 					<button on:click={() => handleEditButtonClick(book)}>編集</button>
 					<button on:click={() => handleDeleteButtonClick(book)}>削除</button>
 				</div>
 			{:else}
 				<div>
-					<input bind:value={editingBook.bookTitle} placeholder="タイトル" />
 					<input bind:value={editingBook.bookURL} placeholder="URL" />
+					<input bind:value={editingBook.bookTitle} placeholder="タイトル" />
 					<input bind:value={editingBook.bookImageURL} placeholder="画像URL" />
-					<input bind:value={editingBook.description} placeholder="紹介文" />
+					<input bind:value={editingBook.proceed} placeholder="進捗" />
+					<input bind:value={editingBook.total} placeholder="作業量" />
+					<button on:click={handleInputURL}>AutoFill</button>
 					<button on:click={() => handleEditConfirmButton(book)}>更新</button>
 					<button on:click={handleCancelButton}>キャンセル</button>
 				</div>
@@ -148,18 +243,17 @@
 	{/if}
 	{#if newBook}
 		<div>
-			<input bind:value={newBook.bookTitle} placeholder="タイトル" />
 			<input bind:value={newBook.bookURL} placeholder="URL" />
+			<input bind:value={newBook.bookTitle} placeholder="タイトル" />
 			<input bind:value={newBook.bookImageURL} placeholder="画像URL" />
-			<input bind:value={newBook.description} placeholder="紹介文" />
+			<input bind:value={newBook.proceed} placeholder="進捗" />
+			<input bind:value={newBook.total} placeholder="作業量" />
+			<button on:click={handleInputURL}>AutoFill</button>
 			<button on:click={handleAddConfirmButton}>確定</button>
 			<button on:click={handleCancelButton}>キャンセル</button>
 		</div>
 	{/if}
 </div>
-{#if books.length < 10 && !newBook}
+{#if !newBook}
 	<button on:click={hancleAddButtonClick}>追加</button>
-{/if}
-{#if books.length > 0 && !newBook && !editingBook && userName && title}
-	<button on:click={handlePublicButtonClick}>公開</button>
 {/if}
