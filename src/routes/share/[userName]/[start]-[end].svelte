@@ -12,6 +12,7 @@
 </script>
 
 <script>
+	import { LAMBDA_URL } from '$lib/Env';
 	import Chart from 'svelte-frappe-charts';
 
 	function dateToString(d) {
@@ -38,9 +39,7 @@
 	// ZをつけるとUTC扱いにできる
 
 	async function getProceedLog(userName, startDate, endDate) {
-		const path = `/proceed?user_name=${userName}&date_range=${startDate}-${endDate}`;
-		const URL = import.meta.env.VITE_LAMBDA_URL + path;
-		console.log(URL);
+		const URL = LAMBDA_URL + `/proceed?user_name=${userName}&date_range=${startDate}-${endDate}`;
 		const r = await fetch(URL, { method: 'GET' });
 		const data = await r.json();
 		console.log(data);
