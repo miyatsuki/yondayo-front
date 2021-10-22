@@ -1,10 +1,8 @@
 <script>
 	import { createClient } from '@supabase/supabase-js';
+	import { SUPABASE_URL, SUPABASE_KEY } from '$lib/Env';
 
-	const supabase = createClient(
-		import.meta.env.VITE_SUPABASE_URL,
-		import.meta.env.VITE_SUPABASE_KEY
-	);
+	const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 	var books = [];
 	var userName;
