@@ -65,6 +65,11 @@
 		}
 
 		for (var bookId of Object.keys(proceeds)) {
+			if (proceeds[bookId][0] === 0) {
+				proceeds[bookId][0] =
+					(data['summary'][bookId]['inital'] / data['summary'][bookId]['total']) * 100;
+			}
+
 			for (var i = 1; i < xAxis.length; i++) {
 				if (proceeds[bookId][i] === 0) {
 					proceeds[bookId][i] = proceeds[bookId][i - 1];
