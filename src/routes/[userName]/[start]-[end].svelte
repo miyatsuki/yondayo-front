@@ -72,14 +72,18 @@
 			const yyyy_mm_dd = dateToString(new Date(proceed[7] + 'Z'));
 			const bookId = proceed[0];
 			const total = data['summary'][bookId]['total'];
-			proceeds[bookId][xAxis.indexOf(yyyy_mm_dd)] += (proceed[5] / total) * 100;
-			totals[xAxis.indexOf(yyyy_mm_dd)] += ((proceed[5] - proceed[4]) / total) * 100;
+			proceeds[bookId][xAxis.indexOf(yyyy_mm_dd)] +=
+				Math.round((proceed[5] / total) * 100 * 100) / 100;
+			totals[xAxis.indexOf(yyyy_mm_dd)] +=
+				Math.round(((proceed[5] - proceed[4]) / total) * 100 * 100) / 100;
 		}
 
 		for (var bookId of Object.keys(proceeds)) {
 			if (proceeds[bookId][0] === 0) {
 				proceeds[bookId][0] =
-					(data['summary'][bookId]['inital'] / data['summary'][bookId]['total']) * 100;
+					Math.round(
+						(data['summary'][bookId]['inital'] / data['summary'][bookId]['total']) * 100 * 100
+					) / 100;
 			}
 
 			for (var i = 1; i < xAxis.length; i++) {
