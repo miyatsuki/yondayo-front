@@ -106,9 +106,12 @@
 	let total;
 	let proceedData;
 	getProceedLog(userName, startDate, endDate);
+	let lineOptions = {
+		regionFill: 1 // default: 0
+	};
 </script>
 
 {#if total}
 	<Chart data={total} type="bar" />
-	<Chart data={proceedData} type="line" />
+	<Chart data={proceedData} type="line" {lineOptions} />
 {/if}
