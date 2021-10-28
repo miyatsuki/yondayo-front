@@ -1,6 +1,6 @@
 <script>
 	import { createClient } from '@supabase/supabase-js';
-	import { SUPABASE_URL, SUPABASE_KEY } from '$lib/Env';
+	import { LAMBDA_URL, SUPABASE_URL, SUPABASE_KEY } from '$lib/Env';
 
 	const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -101,7 +101,7 @@
 	async function handleInputURL() {
 		if (editingBook) {
 			try {
-				const r = await fetch(LAMBDA_URL, {
+				const r = await fetch(LAMBDA_URL + '/autofill', {
 					method: 'POST',
 					headers: { 'Content-type': 'application/json' },
 					body: JSON.stringify({ url: editingBook.bookURL })
@@ -130,7 +130,7 @@
 
 		if (newBook) {
 			try {
-				const r = await fetch(LAMBDA_URL, {
+				const r = await fetch(LAMBDA_URL + '/autofill', {
 					method: 'POST',
 					headers: { 'Content-type': 'application/json' },
 					body: JSON.stringify({ url: newBook.bookURL })
