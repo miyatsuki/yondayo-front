@@ -5,7 +5,8 @@
 			props: {
 				userName: page.params.userName,
 				startDate: page.params.start,
-				endDate: page.params.end
+				endDate: page.params.end,
+				siteURL: page.host + page.path
 			}
 		};
 	}
@@ -36,7 +37,18 @@
 		return days;
 	}
 
-	// ZをつけるとUTC扱いにできる
+	async function createOGPImage(userName, startDate, endDate) {
+		const r = await fetch(LAMBDA_URL + '/image', {
+			method: 'POST',
+			headers: { 'Content-type': 'application/json' },
+			body: JSON.stringify({
+				user_name: userName,
+				start_date: dateToString(yyyymmddToDate(startDate)),
+				end_date: dateToString(yyyymmddToDate(endDate))
+			})
+		});
+		console.log(r);
+	}
 
 	async function getProceedLog(userName, startDate, endDate) {
 		const URL = LAMBDA_URL + `/proceed?user_name=${userName}&date_range=${startDate}-${endDate}`;
@@ -103,13 +115,27 @@
 	export let userName;
 	export let startDate;
 	export let endDate;
+	export let siteURL;
 	let total;
 	let proceedData;
+
+	createOGPImage(userName, startDate, endDate);
 	getProceedLog(userName, startDate, endDate);
 	let lineOptions = {
 		regionFill: 1 // default: 0
 	};
+
+	let siteTitle = `${userName} | ${startDate}-${endDate}の学習記録`;
+	let imageURL = `https://yondayo.s3.ap-northeast-1.amazonaws.com/ogp/${userName}/${startDate}-${endDate}.png`;
 </script>
+
+<svelte:head>
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta property="og:url" content={siteURL} />
+	<meta property="og:title" content={siteTitle} />
+	<meta property="og:description" content={siteTitle} />
+	<meta property="og:image" content={imageURL} />
+</svelte:head>
 
 {#if total}
 	<Chart data={total} type="bar" />
