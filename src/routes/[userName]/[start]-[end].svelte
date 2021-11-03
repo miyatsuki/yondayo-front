@@ -13,7 +13,7 @@
 </script>
 
 <script>
-	import { LAMBDA_URL } from '$lib/Env';
+	import { API_URL } from '$lib/Env';
 	import Chart from 'svelte-frappe-charts';
 
 	function dateToString(d) {
@@ -38,21 +38,16 @@
 	}
 
 	async function createOGPImage(userName, startDate, endDate) {
-		const r = await fetch(LAMBDA_URL + '/image', {
-			method: 'POST',
-			headers: { 'Content-type': 'application/json' },
-			body: JSON.stringify({
-				user_name: userName,
-				start_date: dateToString(yyyymmddToDate(startDate)),
-				end_date: dateToString(yyyymmddToDate(endDate))
-			})
-		});
+		const URL =
+			API_URL + `/image?user_name=${userName}&start_date=${startDate}&end_date=${endDate}`;
+		const r = await fetch(URL);
 		console.log(r);
 	}
 
 	async function getProceedLog(userName, startDate, endDate) {
-		const URL = LAMBDA_URL + `/proceed?user_name=${userName}&date_range=${startDate}-${endDate}`;
-		const r = await fetch(URL, { method: 'GET' });
+		const URL =
+			API_URL + `/proceed?user_name=${userName}&start_date=${startDate}&end_date=${endDate}`;
+		const r = await fetch(URL);
 		const data = await r.json();
 		console.log(data);
 
@@ -68,7 +63,7 @@
 		}
 		const totals = Array.from(Array(xAxis.length).keys()).map((x) => 0);
 
-		for (var proceed of data['proceeds']) {
+		for (var proceed of data['proceed']) {
 			const yyyy_mm_dd = dateToString(new Date(proceed[7] + 'Z'));
 			const bookId = proceed[0];
 			const total = data['summary'][bookId]['total'];
