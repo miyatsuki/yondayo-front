@@ -67,8 +67,10 @@
 			const yyyy_mm_dd = dateToString(new Date(proceed[7] + 'Z'));
 			const bookId = proceed[0];
 			const total = data['summary'][bookId]['total'];
-			proceeds[bookId][xAxis.indexOf(yyyy_mm_dd)] +=
-				Math.round((proceed[5] / total) * 100 * 100) / 100;
+			proceeds[bookId][xAxis.indexOf(yyyy_mm_dd)] = Math.max(
+				proceeds[bookId][xAxis.indexOf(yyyy_mm_dd)],
+				Math.round((proceed[5] / total) * 100 * 100) / 100
+			);
 			totals[xAxis.indexOf(yyyy_mm_dd)] +=
 				Math.round(((proceed[5] - proceed[4]) / total) * 100 * 100) / 100;
 		}
